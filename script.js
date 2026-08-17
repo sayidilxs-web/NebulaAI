@@ -1,164 +1,262 @@
-// ======================================
-// Nebula AI - Interactions & Animations
-// ======================================
+/* ============================================================
+   NEXUSAI — Interactive behavior
+   ============================================================ */
 
-// --- Header scroll effect ---
-const header = document.getElementById('header');
+document.addEventListener('DOMContentLoaded', () => {
+  initNavbar();
+  initMobileMenu();
+  initTypingEffect();
+  initReveal();
+  initPricingToggle();
+  initFAQ();
+  initFooterYear();
+  initActiveNav();
+});
 
-function handleHeaderScroll() {
-  if (window.scrollY > 30) {
-    header.classList.add('scrolled');
-  } else {
-    header.classList.remove('scrolled');
+/* ---------- Navbar scroll state ---------- */
+function initNavbar() {
+  const navbar = document.getElementById('navbar');
+  const onScroll = () => {
+    if (window.scrollY > 40) {
+      navbar.classList.add('scrolled');
+    } else {
+      navbar.classList.remove('scrolled');
+    }
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+}
+
+/* ---------- Mobile menu ---------- */
+function initMobileMenu() {
+  const menuToggle = document.getElementById('menuToggle');
+  const navLinks = document.getElementById('navLinks');
+
+  if (!menuToggle || !navLinks) return;
+
+  const closeMenu = () => {
+    navLinks.classList.remove('open');
+    menuToggle.classList.remove('open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('no-scroll');
+  };
+
+  const toggleMenu = () => {
+    const isOpen = navLinks.classList.toggle('open');
+    menuToggle.classList.toggle('open', isOpen);
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    document.body.classList.toggle('no-scroll', isOpen);
+  };
+
+  menuToggle.addEventListener('click', toggleMenu);
+
+  // Close menu when a link is clicked
+  navLinks.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (
+      navLinks.classList.contains('open') &&
+      !navLinks.contains(e.target) &&
+      !menuToggle.contains(e.target)
+    ) {
+      closeMenu();
+    }
+  });
+
+  // Close on escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenu();
+    }
+  });
+}
+
+/* ---------- Hero terminal typing effect ---------- */
+function initTypingEffect() {
+  const typeElement = document.getElementById('typeEffect');
+  if (!typeElement) return;
+
+  const lines = [
+    '✓ Analyzing 1.2M events…',
+    '✓ Insight extracted: Churn risk ↓ 18%',
+    '✓ Recommendation: Re-engage segment B',
+    '✓ Pipeline complete in 0.42s',
+  ];
+
+  let lineIndex = 0;
+  let charIndex = 0;
+  let isDeleting = false;
+  const baseSpeed = 30;
+
+  // Start after page load
+  setTimeout(type, 1200);
+
+  function type() {
+    const currentLine = lines[lineIndex];
+    const visibleLine = currentLine.slice(0, charIndex);
+    typeElement.textContent = visibleLine;
+
+    // If not deleting, type a character; otherwise wait and delete
+    if (!isDeleting) {
+      charIndex++;
+      if (charIndex > currentLine.length) {
+        isDeleting = true;
+        setTimeout(type, 1800); // pause at end
+        return;
+      }
+    } else {
+      charIndex--;
+      if (charIndex < 0) {
+        isDeleting = false;
+        lineIndex = (lineIndex + 1) % lines.length;
+        charIndex = 0;
+        setTimeout(type, 400); // small pause before next line
+        return;
+      }
+    }
+
+    setTimeout(type, baseSpeed + Math.random() * 20);
   }
 }
 
-window.addEventListener('scroll', handleHeaderScroll);
-handleHeaderScroll();
+/* ---------- Scroll reveal animation ---------- */
+function initReveal() {
+  const revealElements = document.querySelectorAll('.reveal');
 
-// --- Mobile navigation toggle ---
-const mobileToggle = document.getElementById('mobileToggle');
-const navLinks = document.getElementById('navLinks');
-
-mobileToggle.addEventListener('click', () => {
-  navLinks.classList.toggle('open');
-});
-
-// Close mobile menu when a link is clicked
-navLinks.addEventListener('click', (e) => {
-  if (e.target.tagName === 'A') {
-    navLinks.classList.remove('open');
+  if (!('IntersectionObserver' in window)) {
+    revealElements.forEach((el) => el.classList.add('visible'));
+    return;
   }
-});
 
-// --- Reveal on scroll ---
-const revealElements = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.15,
+      rootMargin: '0px 0px -40px 0px',
+    }
+  );
 
-const revealObserver = new IntersectionObserver(
-  (entries, observer) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
+  revealElements.forEach((el) => observer.observe(el));
+}
+
+/* ---------- Pricing monthly/yearly toggle ---------- */
+function initPricingToggle() {
+  const toggle = document.getElementById('billingToggle');
+  const monthlyLabel = document.getElementById('monthlyLabel');
+  const yearlyLabel = document.getElementById('yearlyLabel');
+  const amounts = document.querySelectorAll('.price-card__amount');
+
+  if (!toggle || !amounts.length) return;
+
+  const updatePricing = () => {
+    const isYearly = toggle.checked;
+
+    // Update toggle label states
+    monthlyLabel.classList.toggle('pricing__toggle-label--active', !isYearly);
+    yearlyLabel.classList.toggle('pricing__toggle-label--active', isYearly);
+
+    // Animate amount change
+    amounts.forEach((amount) => {
+      const monthly = parseFloat(amount.dataset.monthly);
+      const yearly = parseFloat(amount.dataset.yearly);
+      const target = isYearly ? yearly : monthly;
+
+      // Only animate if values actually differ (not both zero)
+      if (target !== parseFloat(amount.textContent)) {
+        animateNumber(amount, target, 350);
       }
     });
-  },
-  { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
-);
-
-revealElements.forEach((el) => revealObserver.observe(el));
-
-// --- Animated counters ---
-const counters = document.querySelectorAll('.stat-number');
-
-const runCounter = (counter) => {
-  const target = Number(counter.dataset.target);
-  const duration = 2000;
-  const startTime = performance.now();
-
-  const update = (currentTime) => {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-    const current = Math.floor(eased * target);
-
-    // Format with commas for large numbers
-    counter.textContent = current.toLocaleString('en-US');
-
-    if (progress < 1) {
-      requestAnimationFrame(update);
-    } else {
-      counter.textContent = target.toLocaleString('en-US');
-    }
   };
 
-  requestAnimationFrame(update);
-};
+  toggle.addEventListener('change', updatePricing);
+}
 
-const counterObserver = new IntersectionObserver(
-  (entries, observer) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        runCounter(entry.target);
-        observer.unobserve(entry.target);
+function animateNumber(element, target, duration) {
+  const start = parseFloat(element.textContent) || 0;
+  const startTime = performance.now();
+
+  function frame(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+    const current = start + (target - start) * eased;
+    element.textContent = Math.round(current);
+    if (progress < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      element.textContent = target;
+    }
+  }
+
+  requestAnimationFrame(frame);
+}
+
+/* ---------- FAQ accordion ---------- */
+function initFAQ() {
+  const items = document.querySelectorAll('.faq__item');
+
+  items.forEach((item) => {
+    const question = item.querySelector('.faq__question');
+    const answer = item.querySelector('.faq__answer');
+
+    question.addEventListener('click', () => {
+      const isOpen = item.classList.contains('open');
+
+      // Close all items
+      items.forEach((other) => {
+        other.classList.remove('open');
+        other.querySelector('.faq__question').setAttribute('aria-expanded', 'false');
+      });
+
+      // Toggle the clicked one
+      if (!isOpen) {
+        item.classList.add('open');
+        question.setAttribute('aria-expanded', 'true');
       }
     });
-  },
-  { threshold: 0.6 }
-);
-
-counters.forEach((counter) => counterObserver.observe(counter));
-
-// --- Dashboard chart bars animate on load ---
-const bars = document.querySelectorAll('.chart-bars span');
-window.addEventListener('load', () => {
-  bars.forEach((bar, index) => {
-    setTimeout(() => {
-      bar.style.opacity = '1';
-      bar.style.transform = 'translateY(0)';
-    }, index * 80);
   });
-});
+}
 
-// Set initial state for bars
-bars.forEach((bar) => {
-  bar.style.opacity = '0.2';
-  bar.style.transform = 'translateY(20px)';
-  bar.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-});
-
-// --- Add hover glow to logo ---
-document.querySelectorAll('.logo').forEach((logo) => {
-  logo.addEventListener('mouseenter', () => {
-    logo.querySelector('.logo-icon').style.animation = 'logoGlow 0.6s ease';
-  });
-  logo.addEventListener('animationend', (e) => {
-    if (e.target.classList.contains('logo-icon')) {
-      e.target.style.animation = '';
-    }
-  });
-});
-
-// Inject logo glow keyframes
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes logoGlow {
-    0% { box-shadow: 0 4px 16px rgba(109, 94, 240, 0.4); }
-    50% { box-shadow: 0 4px 32px rgba(34, 211, 238, 0.7); }
-    100% { box-shadow: 0 4px 16px rgba(109, 94, 240, 0.4); }
+/* ---------- Footer year ---------- */
+function initFooterYear() {
+  const yearElement = document.getElementById('year');
+  if (yearElement) {
+    yearElement.textContent = new Date().getFullYear();
   }
-`;
-document.head.appendChild(style);
+}
 
-// --- Smooth scroll for all anchor links ---
-document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-  anchor.addEventListener('click', function (e) {
-    const href = this.getAttribute('href');
-    if (href === '#' || href === '') return;
-    e.preventDefault();
-    const target = document.querySelector(href);
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+/* ---------- Active nav link on scroll ---------- */
+function initActiveNav() {
+  const sections = document.querySelectorAll('main section[id]');
+  const navLinks = document.querySelectorAll('.nav-links__link');
+
+  if (!sections.length || !navLinks.length) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          navLinks.forEach((link) => {
+            link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
+          });
+        }
+      });
+    },
+    {
+      rootMargin: '-40% 0px -50% 0px',
     }
-  });
-});
+  );
 
-// --- Simple 3D tilt effect for dashboard mockup (desktop only) ---
-const dashboard = document.querySelector('.dashboard-mockup');
-if (dashboard && window.matchMedia('(hover: hover)').matches) {
-  dashboard.addEventListener('mousemove', (e) => {
-    const rect = dashboard.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    dashboard.style.transform = `perspective(1000px) rotateY(${x * 6}deg) rotateX(${y * -6}deg) translateY(-4px)`;
-  });
-
-  dashboard.addEventListener('mouseleave', () => {
-    dashboard.style.transform = 'perspective(1000px) rotateY(0) rotateX(0) translateY(0)';
-    dashboard.style.transition = 'transform 0.4s ease';
-  });
-
-  dashboard.addEventListener('mouseenter', () => {
-    dashboard.style.transition = 'transform 0.1s ease';
-  });
+  sections.forEach((section) => observer.observe(section));
 }
